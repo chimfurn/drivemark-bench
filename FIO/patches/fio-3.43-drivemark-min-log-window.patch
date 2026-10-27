@@ -1,0 +1,48 @@
+diff --git a/init.c b/init.c
+index 1111111..2222222 100644
+--- a/init.c
++++ b/init.c
+@@ -1848,10 +1848,17 @@
+ 		const char *pre = make_log_name(o->bw_log_file, o->name);
+ 		const char *suf;
+ 
+-		if (fio_option_is_set(o, bw_avg_time))
+-			p.avg_msec = min(o->log_avg_msec, o->bw_avg_time);
+-		else
+-			o->bw_avg_time = p.avg_msec;
++		/*
++		 * DriveMark patch: minimum 100ms smoothing window for the bandwidth
++		 * log. With large blocks and deep queues, completion events are
++		 * delivered in bursts; a sub-10ms window then reports impossible
++		 * instantaneous rates (tens of GiB/s). Latency logs still use
++		 * log_avg_msec, so high-frequency latency sampling is unchanged.
++		 */
++		if (fio_option_is_set(o, bw_avg_time)) {
++			p.avg_msec = max(100, min(o->log_avg_msec, o->bw_avg_time));
++			o->bw_avg_time = p.avg_msec;
++		} else {
++			p.avg_msec = max(100, o->log_avg_msec);
++			o->bw_avg_time = p.avg_msec;
++		}
+ 
+ 		p.hist_msec = o->log_hist_msec;
+ 		p.hist_coarseness = o->log_hist_coarseness;
+@@ -1880,10 +1888,17 @@
+ 		const char *pre = make_log_name(o->iops_log_file, o->name);
+ 		const char *suf;
+ 
+-		if (fio_option_is_set(o, iops_avg_time))
+-			p.avg_msec = min(o->log_avg_msec, o->iops_avg_time);
+-		else
+-			o->iops_avg_time = p.avg_msec;
++		/* DriveMark patch: same minimum 100ms smoothing window as the bw log. */
++		if (fio_option_is_set(o, iops_avg_time)) {
++			p.avg_msec = max(100, min(o->log_avg_msec, o->iops_avg_time));
++			o->iops_avg_time = p.avg_msec;
++		} else {
++			p.avg_msec = max(100, o->log_avg_msec);
++			o->iops_avg_time = p.avg_msec;
++		}
+ 
+ 		p.hist_msec = o->log_hist_msec;
+ 		p.hist_coarseness = o->log_hist_coarseness;

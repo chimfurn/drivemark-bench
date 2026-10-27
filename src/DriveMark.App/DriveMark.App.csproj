@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>DriveMark.App</RootNamespace>
+    <AssemblyName>DriveMark</AssemblyName>
+    <AssemblyTitle>DriveMark 硬盘测速</AssemblyTitle>
+    <Product>DriveMark</Product>
+    <Description>基于 fio 的硬盘测速工具（图表 + 参数编辑 + 真实执行）</Description>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <ApplicationIcon></ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DriveMark.Core\DriveMark.Core.csproj" />
+    <ProjectReference Include="..\DriveMark.Chart\DriveMark.Chart.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DriveMark.App/DriveMark.App.csproj" />
+    <Project Path="src/DriveMark.Chart/DriveMark.Chart.csproj" />
+    <Project Path="src/DriveMark.Core/DriveMark.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DriveMark.Tests/DriveMark.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/DriveMark.Cli/DriveMark.Cli.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,26 @@
+# ===== 构建输出 / Build outputs =====
+bin/
+obj/
+app/
+.vs/
+*.user
+*.suo
+*.pdb
+
+# ===== 本机运行数据（不发布）/ local-only runtime data =====
+runtime/
+results/
+backup/
+acl-backup-*
+acl-report-*
+*.msi
+
+# ===== 编译好的程序（源码仓库只放源码；可执行包在 GitHub Releases）=====
+/DriveMark.exe
+/DriveMark.Chart.dll
+/DriveMark.Core.dll
+/DriveMark.dll
+/DriveMark.deps.json
+/DriveMark.runtimeconfig.json
+/FIO/fio.exe
+/FIO/t/*.exe
