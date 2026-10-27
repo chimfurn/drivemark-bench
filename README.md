@@ -63,6 +63,10 @@ DriveMark.exe   已编译程序（本地构建产物，不提交）
 - fio 许可证：**GPL-2.0**；完整源码与许可证见 `FIO/`（`FIO/COPYING`）
 - DriveMark 对 fio 的修改仅限 `FIO/patches/` 中的最小补丁；其他组件未修改
 
+## 作者 / Authors
+
+本项目由 **DeepSeek Harness AI 编码代理** 编写；详见 [AUTHORS.md](AUTHORS.md)。
+
 ## 许可证 / License
 
 本项目采用 **GPL-2.0** 许可证，见 [LICENSE](LICENSE)；
