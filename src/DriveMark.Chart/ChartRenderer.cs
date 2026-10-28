@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using DriveMark.Core;
 using DriveMark.Core.Charts;
 
@@ -128,11 +129,15 @@ public static class ChartRenderer
 
         // ---------- 7. 曲线（裁剪在绘图区内） ----------
         dc.PushClip(new RectangleGeometry(plot));
-        foreach (var series in model.Series)
+        if (model.RenderStyle == ChartRenderStyle.Scatter)
         {
-            if (model.RenderStyle == ChartRenderStyle.Scatter)
-                DrawScatterSeries(dc, series, xRange, yRange, plot, theme);
-            else
+            // 散点可能上万个：先画到一张位图，再一次性贴到绘图区。
+            // 逐点 DrawEllipse 在 WPF 里会为每个点生成一个绘制指令，点多时非常卡。
+            DrawScatterSeriesBitmap(dc, model.Series, xRange, yRange, plot, theme);
+        }
+        else
+        {
+            foreach (var series in model.Series)
                 DrawSeries(dc, series, xRange, yRange, plot, theme);
         }
         dc.Pop();
@@ -281,27 +286,90 @@ public static class ChartRenderer
         }
     }
 
-    /// <summary>散点图：只画数据点，不画连线与面积，适合观察离散程度/抖动。</summary>
-    private static void DrawScatterSeries(
-        DrawingContext dc, ChartSeries series, AxisRange xRange, AxisRange yRange, Rect plot, ChartTheme theme)
+    /// <summary>
+    /// 散点图：把所有系列的点一次性栅格化到一张透明位图，再贴到绘图区。
+    /// 点数多时只保留约 12 万个点，避免上百万点拖慢界面。
+    /// </summary>
+    private static void DrawScatterSeriesBitmap(
+        DrawingContext dc, IReadOnlyList<ChartSeries> seriesList, AxisRange xRange, AxisRange yRange, Rect plot, ChartTheme theme)
     {
-        if (series.Points.Count == 0)
+        var width = (int)Math.Ceiling(plot.Width);
+        var height = (int)Math.Ceiling(plot.Height);
+        if (width <= 0 || height <= 0)
             return;
 
-        var color = theme.ColorFor(series.Role);
-        var brush = new SolidColorBrush(Color.FromArgb(215, color.R, color.G, color.B));
-        brush.Freeze();
+        var stride = width * 4;
+        var pixels = new byte[stride * height];
+        var totalPoints = seriesList.Sum(series => series.Points.Count);
 
-        // 点越密半径越小，避免糊成一片。
-        var radius = series.Points.Count > 2000 ? 1.7 : series.Points.Count > 500 ? 2.2 : 2.8;
+        // 点越多，点越小；超过约 5 万点时用单像素，避免整块绘图区被糊成色块。
+        var radius = totalPoints > 50_000 ? 0 : totalPoints > 10_000 ? 1 : totalPoints > 1_000 ? 1 : 2;
+        const int alpha = 210;
+        const int maxPointsPerSeries = 120_000;
 
-        foreach (var point in series.Points)
+        foreach (var series in seriesList)
         {
-            var x = MapX(point.X, xRange, plot);
-            var y = MapY(point.Y, yRange, plot);
-            if (x < plot.Left - 2 || x > plot.Right + 2 || y < plot.Top - 2 || y > plot.Bottom + 2)
+            if (series.Points.Count == 0)
                 continue;
-            dc.DrawEllipse(brush, null, new Point(x, y), radius, radius);
+
+            var color = theme.ColorFor(series.Role);
+            var b = (byte)(color.B * alpha / 255);
+            var g = (byte)(color.G * alpha / 255);
+            var r = (byte)(color.R * alpha / 255);
+            var step = Math.Max(1, (int)Math.Ceiling(series.Points.Count / (double)maxPointsPerSeries));
+
+            for (var i = 0; i < series.Points.Count; i += step)
+            {
+                var point = series.Points[i];
+                var px = (int)Math.Round(MapX(point.X, xRange, plot) - plot.Left);
+                var py = (int)Math.Round(MapY(point.Y, yRange, plot) - plot.Top);
+                PlotDot(pixels, width, height, stride, px, py, radius, b, g, r, alpha);
+            }
+        }
+
+        var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, pixels, stride);
+        bitmap.Freeze();
+        dc.DrawImage(bitmap, plot);
+    }
+
+    private static void PlotDot(
+        byte[] pixels, int width, int height, int stride, int cx, int cy,
+        int radius, byte b, byte g, byte r, byte alpha)
+    {
+        if (cx < -radius || cx > width + radius || cy < -radius || cy > height + radius)
+            return;
+
+        if (radius <= 0)
+        {
+            if (cx < 0 || cx >= width || cy < 0 || cy >= height)
+                return;
+            var i0 = cy * stride + cx * 4;
+            pixels[i0] = b;
+            pixels[i0 + 1] = g;
+            pixels[i0 + 2] = r;
+            pixels[i0 + 3] = alpha;
+            return;
+        }
+
+        var radiusSquared = radius * radius;
+        for (var dy = -radius; dy <= radius; dy++)
+        {
+            var y = cy + dy;
+            if (y < 0 || y >= height)
+                continue;
+            for (var dx = -radius; dx <= radius; dx++)
+            {
+                if (dx * dx + dy * dy > radiusSquared)
+                    continue;
+                var x = cx + dx;
+                if (x < 0 || x >= width)
+                    continue;
+                var i = y * stride + x * 4;
+                pixels[i] = b;
+                pixels[i + 1] = g;
+                pixels[i + 2] = r;
+                pixels[i + 3] = alpha;
+            }
         }
     }
 

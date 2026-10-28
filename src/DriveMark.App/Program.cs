@@ -130,13 +130,6 @@ public static class Program
                 ParseDouble(options.GetValueOrDefault("ymax")),
                 ParseDouble(options.GetValueOrDefault("ystep")));
 
-            if (options.GetValueOrDefault("style") is { } styleText)
-            {
-                window.ApplyChartStyleForAutomation(
-                    styleText.Equals("scatter", StringComparison.OrdinalIgnoreCase)
-                        ? ChartRenderStyle.Scatter
-                        : ChartRenderStyle.Line);
-            }
 
             if (options.ContainsKey("expand"))
                 window.ExpandAdvancedForAutomation();

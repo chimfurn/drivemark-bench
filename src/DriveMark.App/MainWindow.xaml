@@ -30,8 +30,6 @@
                 <TextBlock Text="纵轴" VerticalAlignment="Center" Foreground="#6B7280" Margin="12,0,0,0"/>
                 <ComboBox x:Name="YAxisCombo" Width="170" Margin="6,0,0,0" VerticalAlignment="Center"/>
 
-                <TextBlock Text="图表" VerticalAlignment="Center" Foreground="#6B7280" Margin="12,0,0,0"/>
-                <ComboBox x:Name="ChartTypeCombo" Width="105" Margin="6,0,0,0" VerticalAlignment="Center"/>
 
                 <TextBlock Text="绘图方式" VerticalAlignment="Center" Foreground="#6B7280" Margin="12,0,0,0"/>
                 <ComboBox x:Name="PlotModeCombo" Width="118" Margin="6,0,0,0" VerticalAlignment="Center"

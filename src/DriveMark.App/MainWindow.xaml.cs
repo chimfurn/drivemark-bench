@@ -22,7 +22,7 @@ namespace DriveMark.App;
 /// <summary>
 /// 主窗口（面向普通用户的精简界面）：
 /// 左侧只保留"测试项目 / 文件大小 / 测试时长 / 采样间隔"四项，其余 fio 参数收进「其他设置」折叠区；
-/// 右侧为图表（可选折线图/散点图、横轴/纵轴）；底部为自由选盘 + 开始/停止 + 实时进度。
+/// 右侧为散点图（横轴/纵轴）；底部为自由选盘 + 开始/停止 + 实时进度。
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -64,7 +64,6 @@ public partial class MainWindow : Window
 
     private sealed record DatasetChoice(string Key, string Label);
     private sealed record AxisChoice(string Label, object Value);
-    private sealed record ChartStyleChoice(string Label, ChartRenderStyle Value);
     private sealed record RawChoice(string Label, RawDeviceInfo Device);
 
     public MainWindow()
@@ -76,7 +75,6 @@ public partial class MainWindow : Window
 
         LoadBuiltInDatasets();
         SetupAxisCombos();
-        SetupChartTypeCombo();
         SetupChartControls();
         SetupSimpleSettings();
         SetupTargets();
@@ -287,16 +285,6 @@ public partial class MainWindow : Window
         _viewportWindowSeconds = null;
     }
 
-    private void SetupChartTypeCombo()
-    {
-        ChartTypeCombo.ItemsSource = new List<ChartStyleChoice>
-        {
-            new("折线图", ChartRenderStyle.Line),
-            new("散点图", ChartRenderStyle.Scatter),
-        };
-        ChartTypeCombo.DisplayMemberPath = nameof(ChartStyleChoice.Label);
-        ChartTypeCombo.SelectedIndex = 0;
-    }
 
     /// <summary>按屏幕工作区自动缩小窗口，避免高 DPI/小屏下窗口超出屏幕导致无法拖动缩放。</summary>
     private void ApplyAdaptiveWindowSize()
@@ -419,7 +407,6 @@ public partial class MainWindow : Window
         DatasetCombo.SelectionChanged += (_, _) => UpdateChart();
         XAxisCombo.SelectionChanged += (_, _) => UpdateChart();
         YAxisCombo.SelectionChanged += (_, _) => UpdateChart();
-        ChartTypeCombo.SelectionChanged += (_, _) => UpdateChart();
 
         PlotModeCombo.SelectionChanged += (_, _) => OnPlotModeChanged();
         ViewportRangeCombo.SelectionChanged += (_, _) => OnViewportRangeChanged();
@@ -501,6 +488,14 @@ public partial class MainWindow : Window
                 if (spec.Parse(presetText) is { } parsed)
                 {
                     spec.Apply(parsed.Value);
+
+                    // 可编辑 ComboBox 在部分 DPI/焦点组合下会延迟刷新显示；
+                    // 选中预设后显式同步文本并重绘，避免“值生效了但选项显示不变”。
+                    if (!string.Equals(combo.Text, presetText, StringComparison.Ordinal))
+                        combo.Text = presetText;
+                    combo.SelectedItem = presetText;
+                    combo.InvalidateVisual();
+
                     RefreshSimpleEditors();
                     StatusText.Text = "准备就绪";
                 }
@@ -601,6 +596,7 @@ public partial class MainWindow : Window
         }
 
         combo.ClearValue(Control.BorderBrushProperty);
+        combo.InvalidateVisual();
         return true;
     }
 
@@ -616,10 +612,27 @@ public partial class MainWindow : Window
             combo.SelectedIndex = -1;
             combo.Text = text;
         }
+
+        combo.InvalidateVisual();
     }
 
     // ---------------------------------------------------------------- 图表
 
+    private bool _chartUpdateQueued;
+
+    /// <summary>把短时间内的多次图表刷新合并成一次，避免日志/进度回调把 UI 线程淹没。</summary>
+    private void RequestChartUpdate()
+    {
+        if (_chartUpdateQueued)
+            return;
+
+        _chartUpdateQueued = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _chartUpdateQueued = false;
+            UpdateChart();
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
     private void UpdateChart()
     {
         if (XAxisCombo.SelectedItem is not AxisChoice xChoice ||
@@ -629,9 +642,8 @@ public partial class MainWindow : Window
         _currentXDimension = (XAxisDimension)xChoice.Value;
         _currentYMetric = (YAxisMetric)yChoice.Value;
 
-        var style = ChartTypeCombo.SelectedItem is ChartStyleChoice styleChoice
-            ? styleChoice.Value
-            : ChartRenderStyle.Line;
+        // 界面只保留散点图（折线图已移除）。
+        const ChartRenderStyle style = ChartRenderStyle.Scatter;
 
         ChartModel model;
         string sourceLabel;
@@ -665,7 +677,7 @@ public partial class MainWindow : Window
 
         var xRange = model.ResolveX();
         var yRange = model.ResolveY();
-        var styleLabel = UiLanguage.Translate(style == ChartRenderStyle.Scatter ? "散点图" : "折线图");
+        var styleLabel = UiLanguage.Translate("散点图");
         var modeLabel = UiLanguage.Translate(_plotMode == PlotMode.Realtime ? "实时绘图" : "完成后绘图");
 
         ChartSummary.Text = $"{model.XTitle}  ×  {model.YTitle}    ·    {styleLabel}    ·    {modeLabel}";
@@ -713,7 +725,7 @@ public partial class MainWindow : Window
         (_hasLiveLogData ? BuildLiveLogModel(style) : null) ?? ApplyViewport(BuildLiveModel(style));
 
     /// <summary>
-    /// 全分辨率实时曲线：数据来自 fio 正在写的日志（10ms 采样≈每秒 100 点），
+    /// 全分辨率实时曲线：数据来自 fio 运行中已刷出的日志（通常测试结束后才完整写盘），
     /// 与"完成后绘图"使用同一批日志点，因此点数一致。
     /// </summary>
     private ChartModel? BuildLiveLogModel(ChartRenderStyle style)
@@ -1765,7 +1777,7 @@ public partial class MainWindow : Window
         LiveRunText.Text = string.Join("  ·  ", parts);
     }
 
-    /// <summary>实时日志采样：fio 每完成一个采样窗口就 flush 一行日志，全分辨率更新曲线。</summary>
+    /// <summary>实时日志采样：如果 fio 在运行中已经 flush 出日志行，就追加到曲线；fio 通常要到测试结束才写完整日志。</summary>
     private void OnLiveLogSamples(IReadOnlyList<FioLogTailSample> samples)
     {
         if (_plotMode != PlotMode.Realtime || samples.Count == 0)
@@ -1788,7 +1800,7 @@ public partial class MainWindow : Window
         }
 
         _hasLiveLogData = true;
-        UpdateChart();
+        RequestChartUpdate();
     }
 
     /// <summary>实时绘图：把一条进度采样追加到曲线（启动/布局阶段没有速率的行会被忽略）。</summary>
@@ -1815,7 +1827,7 @@ public partial class MainWindow : Window
             return;
 
         _hasLiveData = true;
-        UpdateChart();
+        RequestChartUpdate();
     }
 
     /// <summary>诊断：实时绘图的计数信息（供自动化/排查使用）。</summary>
@@ -1888,12 +1900,6 @@ public partial class MainWindow : Window
         UpdateChart();
     }
 
-    /// <summary>程序化切换图表类型（折线/散点）。</summary>
-    public void ApplyChartStyleForAutomation(ChartRenderStyle style)
-    {
-        ChartTypeCombo.SelectedIndex = style == ChartRenderStyle.Scatter ? 1 : 0;
-        UpdateChart();
-    }
 
     /// <summary>供离屏自动化：设置绘图方式（实时绘图 / 完成后绘图）。</summary>
     public void SetPlotModeForAutomation(bool afterRun)
