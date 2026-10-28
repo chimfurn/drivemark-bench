@@ -48,15 +48,28 @@ struct log_sample {
  * This is completely opt-in; without the environment variable fio behaves
  * exactly like upstream.
  */
-static const char *drivemark_live_suffix(unsigned int log_type)
+static const char *drivemark_live_suffix(struct io_log *iolog)
 {
-	switch (log_type) {
+	struct thread_data *td = iolog->td;
+
+	/*
+	 * fio uses IO_LOG_TYPE_LAT for the lat, slat and clat log objects alike
+	 * (see init.c setup of write_lat_log). Distinguish them by the log
+	 * pointer, otherwise all three (including the tiny slat values) end up
+	 * in one live file and pollute the latency chart.
+	 */
+	if (td && iolog == td->lat_log)
+		return "_lat.";
+	if (td && iolog == td->slat_log)
+		return "_slat.";
+	if (td && iolog == td->clat_log)
+		return "_clat.";
+
+	switch (iolog->log_type) {
 	case IO_LOG_TYPE_BW:
 		return "_bw.";
 	case IO_LOG_TYPE_IOPS:
 		return "_iops.";
-	case IO_LOG_TYPE_LAT:
-		return "_lat.";
 	default:
 		return NULL;
 	}
@@ -76,7 +89,7 @@ static void drivemark_live_write(struct io_log *iolog, unsigned long t,
 	if (!dir || !*dir)
 		return;
 
-	suffix = drivemark_live_suffix(iolog->log_type);
+	suffix = drivemark_live_suffix(iolog);
 	if (!suffix)
 		return;
 

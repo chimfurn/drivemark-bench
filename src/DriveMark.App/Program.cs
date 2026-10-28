@@ -105,6 +105,9 @@ public static class Program
                 window.Height = height;
             }
 
+            if (options.GetValueOrDefault("logs") is { } logsDir)
+                window.LoadLogDirectoryForAutomation(logsDir);
+
             if (options.GetValueOrDefault("dataset") is { } dataset)
                 window.SelectDataset(dataset);
 

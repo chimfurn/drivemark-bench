@@ -32,4 +32,4 @@ fio 为 GPL-2.0；完整源码与许可证见 `FIO/`（`FIO/COPYING`）。
 - 设置环境变量 `DRIVEMARK_FIO_LIVE_DIR=<目录>` 后，fio 会在运行过程中把每个完成的 bw/iops/lat 采样
   立即追加到该目录的 `drivemark-live-<线程号>_bw.1.log` / `_iops.1.log` / `_lat.1.log` 并 flush。
 - GUI 的实时日志插件读取这些文件；默认开启，可在高级设置关闭。
-- 未设置该环境变量时，fio 行为与上游完全一致，普通日志仍在测试结束后生成。
+- lat / slat / clat 三个日志对象由指针区分，分别写入 `_lat` / `_slat` / `_clat` live 文件；GUI 只读取 `_lat`，忽略 slat/clat，避免接近 0 的提交延迟点混入延迟图。\n- 未设置该环境变量时，fio 行为与上游完全一致，普通日志仍在测试结束后生成。
