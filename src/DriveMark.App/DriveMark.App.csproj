@@ -12,14 +12,15 @@
     <AssemblyTitle>DriveMark 硬盘测速</AssemblyTitle>
     <Product>DriveMark</Product>
     <Description>基于 fio 的硬盘测速工具（图表 + 参数编辑 + 真实执行）</Description>
-    <Version>1.1.0</Version>
-    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.2.0</Version>
+    <FileVersion>1.2.0.0</FileVersion>
     <ApplicationIcon></ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DriveMark.Core\DriveMark.Core.csproj" />
     <ProjectReference Include="..\DriveMark.Chart\DriveMark.Chart.csproj" />
+    <ProjectReference Include="..\DriveMark.Plugins.Realtime\DriveMark.Plugins.Realtime.csproj" />
   </ItemGroup>
 
 </Project>

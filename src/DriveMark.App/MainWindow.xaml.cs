@@ -15,6 +15,7 @@ using DriveMark.Core.Charts;
 using DriveMark.Core.Execution;
 using DriveMark.Core.Options;
 using DriveMark.Core.Parsing;
+using DriveMark.Plugins.Realtime;
 using Microsoft.Win32;
 
 namespace DriveMark.App;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
     private readonly List<DatasetChoice> _datasetChoices = [];
     private readonly Dictionary<ComboBox, (Func<string, (string Value, string Display)?> Parse, Action<string> Apply)> _simpleCombos = [];
     private readonly FioJobConfig _config;
+    private readonly RealtimeLogPlugin _realtimeLogPlugin = new();
     private readonly FioRunner _runner = new();
     private readonly LiveChartBuffer _liveBuffer = new();
     private FioOptionEditor _editor = null!;
@@ -55,6 +57,7 @@ public partial class MainWindow : Window
     private readonly List<FioLogSample> _liveBandwidthSamples = [];
     private readonly List<FioLogSample> _liveIopsSamples = [];
     private readonly List<FioLogSample> _liveLatencySamples = [];
+    private readonly HashSet<(FioLogKind Kind, long TimeMs, double Value, int Direction, long BlockSize, long Priority)> _liveSampleKeys = [];
     private bool _hasLiveLogData;
 
     private double? _viewportWindowSeconds;
@@ -149,6 +152,9 @@ public partial class MainWindow : Window
         SmoothFioLogCheck.Content = UiLanguage.Translate("启用 fio 日志平滑（最小 100ms 窗口，默认关闭）");
         SmoothFioLogCheck.ToolTip = UiLanguage.Translate(
             "默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。");
+        RealtimePluginCheck.Content = UiLanguage.Translate("启用实时日志插件（默认开启）");
+        RealtimePluginCheck.ToolTip = UiLanguage.Translate(
+            "插件会读取 fio 运行中写出的 live 采样文件，实时显示全分辨率散点；关闭后测试中退回 fio 进度采样。fio 的普通日志仍会在结束后完整生成。");
         UpdateLayout();
     }
     private static void HookAutoTranslate(TextBlock block)
@@ -175,20 +181,24 @@ public partial class MainWindow : Window
     {
         var english = UiLanguage.IsEnglish;
         var text = english
-            ? "DriveMark — disk benchmark GUI\n\n" +
+            ? "DriveMark 1.2.0 — disk benchmark GUI\n\n" +
               "DriveMark is a graphical front-end for the open-source fio (Flexible I/O Tester).\n\n" +
-              "• fio version: fio-3.43 (bundled, with DriveMark patch)\n" +
+              "• fio version: fio-3.43 (bundled, with optional DriveMark patches)\n" +
               "• fio author: Jens Axboe and contributors\n" +
               "• fio license: GPL-2.0 (full source and license in the FIO folder)\n" +
               "• fio project: https://github.com/axboe/fio\n\n" +
+              "• optional realtime log plugin: enabled by default in Advanced settings\n" +
+              "• optional 100 ms log-smoothing patch: disabled by default\n\n" +
               "DriveMark only provides the UI, parameter validation, result plotting and automation; " +
               "the actual I/O tests are performed by fio."
-            : "DriveMark — 硬盘测速 GUI\n\n" +
+            : "DriveMark 1.2.0 — 硬盘测速 GUI\n\n" +
               "本软件是基于开源 fio（Flexible I/O Tester）开发的图形界面。\n\n" +
-              "• fio 版本：fio-3.43（内置，并打了 DriveMark 补丁）\n" +
+              "• fio 版本：fio-3.43（内置，含可选 DriveMark 补丁）\n" +
               "• fio 作者：Jens Axboe 及贡献者\n" +
               "• fio 许可证：GPL-2.0（完整源码与许可证见软件目录 FIO\\）\n" +
               "• fio 项目：https://github.com/axboe/fio\n\n" +
+              "• 可选实时日志插件：高级设置中默认开启\n" +
+              "• 可选 100ms 日志平滑补丁：默认关闭\n\n" +
               "DriveMark 本身只负责界面、参数校验、结果绘图与自动化调用；实际 I/O 测试由 fio 完成。";
 
         MessageBox.Show(this, text, english ? "About DriveMark" : "关于 DriveMark",
@@ -1473,6 +1483,7 @@ public partial class MainWindow : Window
         _liveBandwidthSamples.Clear();
         _liveIopsSamples.Clear();
         _liveLatencySamples.Clear();
+        _liveSampleKeys.Clear();
         _hasLiveLogData = false;
         if (_plotMode == PlotMode.Realtime)
             UpdateChart();
@@ -1500,6 +1511,7 @@ public partial class MainWindow : Window
                 // 实时绘图需要更密的进度行（否则曲线点太稀）。
                 StatusIntervalMs = _plotMode == PlotMode.Realtime ? 250 : 1000,
                 EnableFioLogSmoothing = SmoothFioLogCheck.IsChecked == true,
+                RealtimeLogPlugin = RealtimePluginCheck.IsChecked == true ? _realtimeLogPlugin : null,
             };
 
             var result = await _runner.RunAsync(request, _runCancellation.Token);
@@ -1616,6 +1628,7 @@ public partial class MainWindow : Window
             RunRootDirectory = saveResults ? ResultsDirectory : null,
             StatusIntervalMs = _plotMode == PlotMode.Realtime ? 250 : 1000,
             EnableFioLogSmoothing = SmoothFioLogCheck.IsChecked == true,
+            RealtimeLogPlugin = RealtimePluginCheck.IsChecked == true ? _realtimeLogPlugin : null,
         };
 
         _isRunning = true;
@@ -1630,6 +1643,7 @@ public partial class MainWindow : Window
         _liveBandwidthSamples.Clear();
         _liveIopsSamples.Clear();
         _liveLatencySamples.Clear();
+        _liveSampleKeys.Clear();
         _hasLiveLogData = false;
         if (_plotMode == PlotMode.Realtime)
             UpdateChart();
@@ -1785,6 +1799,12 @@ public partial class MainWindow : Window
 
         foreach (var item in samples)
         {
+            // 实时插件和普通日志 tail 可能同时送来同一批采样，按内容去重。
+            var key = (item.Kind, item.Sample.TimeMs, item.Sample.Value,
+                item.Sample.Direction, item.Sample.BlockSize, item.Sample.Priority);
+            if (!_liveSampleKeys.Add(key))
+                continue;
+
             switch (item.Kind)
             {
                 case FioLogKind.Bandwidth:

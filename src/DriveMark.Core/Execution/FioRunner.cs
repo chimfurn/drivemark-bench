@@ -220,6 +220,7 @@ public sealed class FioRunner
             foreach (var arg in args)
                 psi.ArgumentList.Add(arg);
             ApplyFioLogSmoothing(psi, request);
+            StartRealtimePlugin(request.RealtimeLogPlugin, Path.Combine(dataDir, "live"), psi);
 
             var timeout = request.HardTimeout ?? ComputeTimeout(config);
             using var process = new Process { StartInfo = psi };
@@ -376,9 +377,10 @@ public sealed class FioRunner
         {
             stopwatch.Stop();
 
-            // 异常路径也要停掉实时日志 tail。
+            // 异常路径也要停掉实时日志 tail / 插件。
             if (logPumpCts is not null && logPumpTask is not null)
                 StopLogPump(logPumpCts, logPumpTask);
+            StopRealtimePlugin();
 
             // ---------- 6. 清理测试数据（只删本次创建的目录） ----------
             try
@@ -595,6 +597,7 @@ public sealed class FioRunner
         foreach (var arg in args)
             psi.ArgumentList.Add(arg);
         ApplyFioLogSmoothing(psi, request);
+        StartRealtimePlugin(request.RealtimeLogPlugin, Path.Combine(runDir, "live"), psi);
 
         var timeout = request.HardTimeout ?? ComputeTimeout(config);
 
@@ -707,6 +710,7 @@ public sealed class FioRunner
         {
             StopLogPump(logPumpCts, logPumpTask);
             EmitLogSamples(logTailer);
+            StopRealtimePlugin();
         }
 
         if (File.Exists(jsonFile))
@@ -927,6 +931,37 @@ public sealed class FioRunner
             psi.Environment["DRIVEMARK_FIO_MIN_LOG_MS"] = "100";
         else
             psi.Environment.Remove("DRIVEMARK_FIO_MIN_LOG_MS");
+    }
+    private IRealtimeLogPlugin? _activeRealtimePlugin;
+
+    private void StartRealtimePlugin(IRealtimeLogPlugin? plugin, string liveDirectory, ProcessStartInfo psi)
+    {
+        if (plugin is null)
+            return;
+
+        try
+        {
+            Directory.CreateDirectory(liveDirectory);
+            psi.Environment["DRIVEMARK_FIO_LIVE_DIR"] = liveDirectory;
+            plugin.Start(liveDirectory, samples =>
+            {
+                if (samples.Count > 0)
+                    LogSamplesReceived?.Invoke(this, new FioLogSamplesEventArgs(samples));
+            });
+            _activeRealtimePlugin = plugin;
+        }
+        catch
+        {
+            // 插件失败不能阻止测试；GUI 会退回进度采样。
+            _activeRealtimePlugin = null;
+        }
+    }
+
+    private void StopRealtimePlugin()
+    {
+        try { _activeRealtimePlugin?.Stop(); }
+        catch { /* ignore */ }
+        _activeRealtimePlugin = null;
     }
     private static string Quote(string value) =>
         value.Contains(' ') || value.Contains('\t') ? $"\"{value}\"" : value;

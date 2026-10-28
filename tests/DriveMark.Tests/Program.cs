@@ -16,6 +16,7 @@ public static class Program
         TestsSafetyAndPoints.Register(tests);
         TestsRawDevices.Register(tests);
         TestsLogTailer.Register(tests);
+        TestsRealtimePlugin.Register(tests);
 
         Console.WriteLine($"工作区根目录：{TestData.Root}");
         Console.WriteLine($"共 {tests.Count} 个测试");

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DriveMark.Core\DriveMark.Core.csproj" />
+    <ProjectReference Include="..\..\src\DriveMark.Plugins.Realtime\DriveMark.Plugins.Realtime.csproj" />
   </ItemGroup>
 
 </Project>

@@ -24,3 +24,5 @@ acl-report-*
 /DriveMark.runtimeconfig.json
 /FIO/fio.exe
 /FIO/t/*.exe
+/DriveMark.Plugins.Realtime.dll
+/DriveMark.Plugins.Realtime.pdb

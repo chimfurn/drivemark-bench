@@ -149,6 +149,11 @@
                                               Content="启用 fio 日志平滑（最小 100ms 窗口，默认关闭）"
                                               Margin="0,0,0,6" VerticalAlignment="Center"
                                               ToolTip="默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。"/>
+                                    <CheckBox x:Name="RealtimePluginCheck"
+                                              Content="启用实时日志插件（默认开启）"
+                                              IsChecked="True" Margin="0,0,0,6" VerticalAlignment="Center"
+                                              ToolTip="插件会读取 fio 运行中写出的 live 采样文件，实时显示全分辨率散点；关闭后测试中退回 fio 进度采样。fio 的普通日志仍会在结束后完整生成。"/>
+
                                     <WrapPanel Margin="0,0,0,6">
                                         <Button x:Name="SaveJobButton" Content="保存 .fio" Padding="8,2" Margin="0,0,6,4"/>
                                         <Button x:Name="CopyJobButton" Content="复制 job" Padding="8,2" Margin="0,0,6,4"/>

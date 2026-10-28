@@ -22,6 +22,9 @@ public sealed class FioRunRequest
     /// <summary>是否启用 fio 日志平滑（最小 100ms 窗口；默认关闭）。</summary>
     public bool EnableFioLogSmoothing { get; init; }
 
+    /// <summary>可选的实时日志插件；非 null 时 fio 会用 live 文件输出采样，插件负责读取。</summary>
+    public IRealtimeLogPlugin? RealtimeLogPlugin { get; init; }
+
     /// <summary>
     /// 是否允许在系统盘上做写测试。默认 false（系统盘禁止写入测试），
     /// 普通用户界面不暴露此开关。

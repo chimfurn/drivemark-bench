@@ -1,0 +1,34 @@
+diff --git a/iolog.h b/iolog.h
+--- a/iolog.h
++++ b/iolog.h
+@@ -145,6 +145,9 @@
+ 	struct io_stat avg_window[DDIR_RWDIR_CNT];
+ 	unsigned long avg_msec;
+ 	unsigned long avg_last[DDIR_RWDIR_CNT];
++
++	/* DriveMark optional plugin: live sample stream handle. */
++	FILE *live_log_fp;
+ 
+ 	struct io_hist hist_window[DDIR_RWDIR_CNT];
+ 	unsigned long hist_msec;
+diff --git a/stat.c b/stat.c
+--- a/stat.c
++++ b/stat.c
+@@ -27,6 +27,70 @@
+ struct log_sample {
+ ...
+ };
++
++/* DriveMark optional realtime plugin: append and flush each sample when
++ * DRIVEMARK_FIO_LIVE_DIR is set. */
++static const char *drivemark_live_suffix(unsigned int log_type) { ... }
++static void drivemark_live_write(struct io_log *iolog, unsigned long t,
++				 const struct log_sample *sample)
++{
++	/* open a shared live file and fprintf + fflush */
++}
+@@ -3134,6 +3198,7 @@
+ 		cur_log->nr_samples++;
++		drivemark_live_write(iolog, t, sample);
+ 		return;
+ 	}

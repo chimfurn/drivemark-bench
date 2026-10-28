@@ -146,6 +146,9 @@ struct io_log {
 	unsigned long avg_msec;
 	unsigned long avg_last[DDIR_RWDIR_CNT];
 
+	/* DriveMark optional plugin: live sample stream handle (NULL when disabled). */
+	FILE *live_log_fp;
+
 	/*
 	 * Windowed latency histograms, for keeping track of when we need to
 	 * save a copy of the histogram every approximately hist_msec

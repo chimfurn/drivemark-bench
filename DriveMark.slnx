@@ -3,6 +3,7 @@
     <Project Path="src/DriveMark.App/DriveMark.App.csproj" />
     <Project Path="src/DriveMark.Chart/DriveMark.Chart.csproj" />
     <Project Path="src/DriveMark.Core/DriveMark.Core.csproj" />
+    <Project Path="src/DriveMark.Plugins.Realtime/DriveMark.Plugins.Realtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DriveMark.Tests/DriveMark.Tests.csproj" />

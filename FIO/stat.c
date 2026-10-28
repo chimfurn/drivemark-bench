@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef WIN32
+#include <share.h>
+#endif
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <math.h>
@@ -32,6 +35,73 @@ struct log_sample {
 	uint16_t priority;
 	uint64_t issue_time;
 };
+
+/*
+ * DriveMark optional realtime plugin.
+ *
+ * When DRIVEMARK_FIO_LIVE_DIR is set, append each completed log sample to a
+ * small text file in that directory immediately and flush it. The GUI can tail
+ * these files during the run instead of reading fio's process memory or waiting
+ * for the final log files. Format matches fio's normal text log:
+ *   time_ms, value, ddir, block_size, priority
+ *
+ * This is completely opt-in; without the environment variable fio behaves
+ * exactly like upstream.
+ */
+static const char *drivemark_live_suffix(unsigned int log_type)
+{
+	switch (log_type) {
+	case IO_LOG_TYPE_BW:
+		return "_bw.";
+	case IO_LOG_TYPE_IOPS:
+		return "_iops.";
+	case IO_LOG_TYPE_LAT:
+		return "_lat.";
+	default:
+		return NULL;
+	}
+}
+
+static void drivemark_live_write(struct io_log *iolog, unsigned long t,
+				 const struct log_sample *sample)
+{
+	const char *dir;
+	const char *suffix;
+	char path[4096];
+
+	if (!iolog || !iolog->td)
+		return;
+
+	dir = getenv("DRIVEMARK_FIO_LIVE_DIR");
+	if (!dir || !*dir)
+		return;
+
+	suffix = drivemark_live_suffix(iolog->log_type);
+	if (!suffix)
+		return;
+
+	if (!iolog->live_log_fp) {
+		snprintf(path, sizeof(path), "%s/drivemark-live-%u%s%u.log",
+			 dir, (unsigned int) iolog->td->thread_number,
+			 suffix, (unsigned int) iolog->td->thread_number);
+#ifdef WIN32
+		/* fio 的 live 文件必须允许 GUI 同时读取。 */
+		iolog->live_log_fp = _fsopen(path, "a", _SH_DENYNO);
+#else
+		iolog->live_log_fp = fopen(path, "a");
+#endif
+		if (!iolog->live_log_fp)
+			return;
+	}
+
+	fprintf(iolog->live_log_fp, "%lu, %llu, %u, %llu, %u\n",
+		t,
+		(unsigned long long) sample->data.val.val0,
+		(unsigned int) sample->ddir,
+		(unsigned long long) sample->bs,
+		(unsigned int) sample->priority);
+	fflush(iolog->live_log_fp);
+}
 
 struct fio_sem *stat_sem;
 
@@ -3146,6 +3216,7 @@ static void __add_log_sample(struct io_log *iolog, unsigned long t,
 			s->aux[IOS_AUX_ISSUE_TIME_INDEX] = sample->issue_time;
 
 		cur_log->nr_samples++;
+		drivemark_live_write(iolog, t, sample);
 		return;
 	}
 

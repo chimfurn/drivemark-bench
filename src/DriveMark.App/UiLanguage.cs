@@ -68,6 +68,10 @@ public static class UiLanguage
         ["校验"] = "Validation",
         ["命令行"] = "Command line",
         ["运行日志"] = "Run log",
+        // 高级：实时日志插件
+        ["启用实时日志插件（默认开启）"] = "Enable realtime log plugin (on by default)",
+        ["插件会读取 fio 运行中写出的 live 采样文件，实时显示全分辨率散点；关闭后测试中退回 fio 进度采样。fio 的普通日志仍会在结束后完整生成。"] =
+            "The plugin tails fio's live sample files during the run to show full-resolution scatter points. When disabled, the realtime chart falls back to fio progress sampling. Normal fio logs are still written completely after the run.",
         // 高级：fio 日志平滑开关
         ["启用 fio 日志平滑（最小 100ms 窗口，默认关闭）"] = "Enable fio log smoothing (min 100 ms window, off by default)",
         ["默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。"] =

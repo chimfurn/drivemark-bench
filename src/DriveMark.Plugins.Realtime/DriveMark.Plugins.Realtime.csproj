@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>DriveMark.Plugins.Realtime</RootNamespace>
+    <AssemblyName>DriveMark.Plugins.Realtime</AssemblyName>
+    <Description>DriveMark realtime fio log plugin: tails fio live sample files.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DriveMark.Core\DriveMark.Core.csproj" />
+  </ItemGroup>
+
+</Project>
