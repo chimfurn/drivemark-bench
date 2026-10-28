@@ -93,6 +93,14 @@ public partial class MainWindow : Window
         AboutButton.Click += (_, _) => ShowAbout();
         FioNoticeText.MouseLeftButtonUp += (_, _) => ShowAbout();
         FioNoticeText.Cursor = Cursors.Hand;
+        AdvancedExpander.Expanded += (_, _) =>
+        {
+            if (UiLanguage.IsEnglish)
+            {
+                UiLanguage.ApplyToWindow(this);
+                ApplyNamedControlLanguage();
+            }
+        };
         HookAutoTranslate(StatusText);
         HookAutoTranslate(LiveRunText);
         Loaded += (_, _) => ApplyLanguageCore();
@@ -118,17 +126,33 @@ public partial class MainWindow : Window
     {
         AppText.Current = UiLanguage.IsEnglish ? AppLanguage.English : AppLanguage.Chinese;
         UiLanguage.ApplyToWindow(this);
+        ApplyNamedControlLanguage();
         ApplySimpleNumericSettings();
         UpdateValidationAndPreview();
         UpdateChart();
-    }
 
+        // 高级区/动态生成的内容可能在该次布局后才实例化，布局完成后再应用一次。
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            UiLanguage.ApplyToWindow(this);
+            ApplyNamedControlLanguage();
+            UpdateLayout();
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
     /// <summary>供截图/自动化使用：--lang en / --lang zh。</summary>
     public void SetUiLanguageForAutomation(string language)
     {
         SetUiLanguage(language.StartsWith("en", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>显式本地化高级区里动态实例化的控件（树遍历可能错过未模板化的元素）。</summary>
+    private void ApplyNamedControlLanguage()
+    {
+        SmoothFioLogCheck.Content = UiLanguage.Translate("启用 fio 日志平滑（最小 100ms 窗口，默认关闭）");
+        SmoothFioLogCheck.ToolTip = UiLanguage.Translate(
+            "默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。");
+        UpdateLayout();
+    }
     private static void HookAutoTranslate(TextBlock block)
     {
         try
@@ -1463,6 +1487,7 @@ public partial class MainWindow : Window
                 RunRootDirectory = runRoot,
                 // 实时绘图需要更密的进度行（否则曲线点太稀）。
                 StatusIntervalMs = _plotMode == PlotMode.Realtime ? 250 : 1000,
+                EnableFioLogSmoothing = SmoothFioLogCheck.IsChecked == true,
             };
 
             var result = await _runner.RunAsync(request, _runCancellation.Token);
@@ -1578,6 +1603,7 @@ public partial class MainWindow : Window
             DeleteTestDataAfterRun = false,
             RunRootDirectory = saveResults ? ResultsDirectory : null,
             StatusIntervalMs = _plotMode == PlotMode.Realtime ? 250 : 1000,
+            EnableFioLogSmoothing = SmoothFioLogCheck.IsChecked == true,
         };
 
         _isRunning = true;

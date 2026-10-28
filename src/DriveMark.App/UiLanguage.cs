@@ -68,7 +68,10 @@ public static class UiLanguage
         ["校验"] = "Validation",
         ["命令行"] = "Command line",
         ["运行日志"] = "Run log",
-        // 图表区
+        // 高级：fio 日志平滑开关
+        ["启用 fio 日志平滑（最小 100ms 窗口，默认关闭）"] = "Enable fio log smoothing (min 100 ms window, off by default)",
+        ["默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。"] =
+            "Off by default: bandwidth/IOPS logs follow the selected sampling interval (instantaneous spikes are possible with large blocks and deep queues). On: fio uses a minimum 100 ms window for bandwidth/IOPS logs (latency logs are unaffected) to suppress those spikes.",        // 图表区
         ["跟随最新"] = "Follow latest",
         ["显示范围"] = "X window",
         // 运行控制

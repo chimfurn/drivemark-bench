@@ -1849,17 +1849,24 @@ static int add_job(struct thread_data *td, const char *jobname, int job_add_num,
 		const char *suf;
 
 		/*
-		 * FIOGUI patch: minimum 100ms smoothing window for the bandwidth
-		 * log. With large blocks and deep queues, completion events are
-		 * delivered in bursts; a sub-10ms window then reports impossible
-		 * instantaneous rates (tens of GiB/s). Latency logs still use
-		 * log_avg_msec, so high-frequency latency sampling is unchanged.
+		 * DriveMark patch (opt-in): the GUI may set
+		 * DRIVEMARK_FIO_MIN_LOG_MS=100 to enforce a minimum smoothing
+		 * window for the bandwidth log. Without that environment variable
+		 * the upstream fio behaviour is preserved.
 		 */
-		if (fio_option_is_set(o, bw_avg_time)) {
-			p.avg_msec = max(100, min(o->log_avg_msec, o->bw_avg_time));
-			o->bw_avg_time = p.avg_msec;
+		const char *bw_min_log_env = getenv("DRIVEMARK_FIO_MIN_LOG_MS");
+		unsigned long bw_min_log_msec = bw_min_log_env ? strtoul(bw_min_log_env, NULL, 10) : 0;
+		if (bw_min_log_msec) {
+			if (fio_option_is_set(o, bw_avg_time)) {
+				p.avg_msec = max(bw_min_log_msec, min(o->log_avg_msec, o->bw_avg_time));
+				o->bw_avg_time = p.avg_msec;
+			} else {
+				p.avg_msec = max(bw_min_log_msec, o->log_avg_msec);
+				o->bw_avg_time = p.avg_msec;
+			}
+		} else if (fio_option_is_set(o, bw_avg_time)) {
+			p.avg_msec = min(o->log_avg_msec, o->bw_avg_time);
 		} else {
-			p.avg_msec = max(100, o->log_avg_msec);
 			o->bw_avg_time = p.avg_msec;
 		}
 
@@ -1891,12 +1898,20 @@ static int add_job(struct thread_data *td, const char *jobname, int job_add_num,
 		const char *pre = make_log_name(o->iops_log_file, o->name);
 		const char *suf;
 
-		/* FIOGUI patch: same minimum 100ms smoothing window as the bw log. */
-		if (fio_option_is_set(o, iops_avg_time)) {
-			p.avg_msec = max(100, min(o->log_avg_msec, o->iops_avg_time));
-			o->iops_avg_time = p.avg_msec;
+		/* DriveMark patch (opt-in): same environment-controlled minimum window. */
+		const char *iops_min_log_env = getenv("DRIVEMARK_FIO_MIN_LOG_MS");
+		unsigned long iops_min_log_msec = iops_min_log_env ? strtoul(iops_min_log_env, NULL, 10) : 0;
+		if (iops_min_log_msec) {
+			if (fio_option_is_set(o, iops_avg_time)) {
+				p.avg_msec = max(iops_min_log_msec, min(o->log_avg_msec, o->iops_avg_time));
+				o->iops_avg_time = p.avg_msec;
+			} else {
+				p.avg_msec = max(iops_min_log_msec, o->log_avg_msec);
+				o->iops_avg_time = p.avg_msec;
+			}
+		} else if (fio_option_is_set(o, iops_avg_time)) {
+			p.avg_msec = min(o->log_avg_msec, o->iops_avg_time);
 		} else {
-			p.avg_msec = max(100, o->log_avg_msec);
 			o->iops_avg_time = p.avg_msec;
 		}
 

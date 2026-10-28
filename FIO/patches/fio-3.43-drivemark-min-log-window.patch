@@ -1,8 +1,7 @@
 diff --git a/init.c b/init.c
-index 1111111..2222222 100644
 --- a/init.c
 +++ b/init.c
-@@ -1848,10 +1848,17 @@
+@@ -1848,10 +1848,25 @@
  		const char *pre = make_log_name(o->bw_log_file, o->name);
  		const char *suf;
  
@@ -11,23 +10,30 @@ index 1111111..2222222 100644
 -		else
 -			o->bw_avg_time = p.avg_msec;
 +		/*
-+		 * DriveMark patch: minimum 100ms smoothing window for the bandwidth
-+		 * log. With large blocks and deep queues, completion events are
-+		 * delivered in bursts; a sub-10ms window then reports impossible
-+		 * instantaneous rates (tens of GiB/s). Latency logs still use
-+		 * log_avg_msec, so high-frequency latency sampling is unchanged.
++		 * DriveMark optional patch: the GUI may set
++		 * DRIVEMARK_FIO_MIN_LOG_MS=100 to enforce a minimum smoothing
++		 * window for the bandwidth log. Without that environment variable
++		 * the upstream fio behaviour is preserved.
 +		 */
-+		if (fio_option_is_set(o, bw_avg_time)) {
-+			p.avg_msec = max(100, min(o->log_avg_msec, o->bw_avg_time));
-+			o->bw_avg_time = p.avg_msec;
++		const char *bw_min_log_env = getenv("DRIVEMARK_FIO_MIN_LOG_MS");
++		unsigned long bw_min_log_msec = bw_min_log_env ? strtoul(bw_min_log_env, NULL, 10) : 0;
++		if (bw_min_log_msec) {
++			if (fio_option_is_set(o, bw_avg_time)) {
++				p.avg_msec = max(bw_min_log_msec, min(o->log_avg_msec, o->bw_avg_time));
++				o->bw_avg_time = p.avg_msec;
++			} else {
++				p.avg_msec = max(bw_min_log_msec, o->log_avg_msec);
++				o->bw_avg_time = p.avg_msec;
++			}
++		} else if (fio_option_is_set(o, bw_avg_time)) {
++			p.avg_msec = min(o->log_avg_msec, o->bw_avg_time);
 +		} else {
-+			p.avg_msec = max(100, o->log_avg_msec);
 +			o->bw_avg_time = p.avg_msec;
 +		}
  
  		p.hist_msec = o->log_hist_msec;
  		p.hist_coarseness = o->log_hist_coarseness;
-@@ -1880,10 +1888,17 @@
+@@ -1880,10 +1895,25 @@
  		const char *pre = make_log_name(o->iops_log_file, o->name);
  		const char *suf;
  
@@ -35,12 +41,20 @@ index 1111111..2222222 100644
 -			p.avg_msec = min(o->log_avg_msec, o->iops_avg_time);
 -		else
 -			o->iops_avg_time = p.avg_msec;
-+		/* DriveMark patch: same minimum 100ms smoothing window as the bw log. */
-+		if (fio_option_is_set(o, iops_avg_time)) {
-+			p.avg_msec = max(100, min(o->log_avg_msec, o->iops_avg_time));
-+			o->iops_avg_time = p.avg_msec;
++		/* DriveMark optional patch: same environment-controlled window. */
++		const char *iops_min_log_env = getenv("DRIVEMARK_FIO_MIN_LOG_MS");
++		unsigned long iops_min_log_msec = iops_min_log_env ? strtoul(iops_min_log_env, NULL, 10) : 0;
++		if (iops_min_log_msec) {
++			if (fio_option_is_set(o, iops_avg_time)) {
++				p.avg_msec = max(iops_min_log_msec, min(o->log_avg_msec, o->iops_avg_time));
++				o->iops_avg_time = p.avg_msec;
++			} else {
++				p.avg_msec = max(iops_min_log_msec, o->log_avg_msec);
++				o->iops_avg_time = p.avg_msec;
++			}
++		} else if (fio_option_is_set(o, iops_avg_time)) {
++			p.avg_msec = min(o->log_avg_msec, o->iops_avg_time);
 +		} else {
-+			p.avg_msec = max(100, o->log_avg_msec);
 +			o->iops_avg_time = p.avg_msec;
 +		}
  

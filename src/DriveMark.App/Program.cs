@@ -260,10 +260,15 @@ public static class Program
                 window.SetViewportOffsetForAutomation(viewportOffset);
             }
 
+            if (options.ContainsKey("expand"))
+                window.ExpandAdvancedForAutomation();
+            window.UpdateLayout();
+            if (options.GetValueOrDefault("lang") is { } langBeforeShot)
+                window.SetUiLanguageForAutomation(langBeforeShot);
             window.UpdateLayout();
             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Render);
             window.UpdateLayout();
-
             var content = (FrameworkElement)window.Content;
             var bitmap = new RenderTargetBitmap(
                 Math.Max(1, (int)content.ActualWidth),

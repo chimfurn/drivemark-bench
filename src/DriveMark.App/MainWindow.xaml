@@ -38,12 +38,6 @@
                           ToolTip="实时绘图：边测边画（不生成图片文件）；完成后绘图：测试结束后用日志出图"/>
 
                 <Button x:Name="ExportPngButton" Content="导出图片…" Padding="10,3" Margin="14,0,0,0" VerticalAlignment="Center"/>
-
-                <TextBlock Text="语言" VerticalAlignment="Center" Foreground="#6B7280" Margin="14,0,0,0"/>
-                <Button x:Name="LanguageZhButton" Content="中文" Padding="10,3" Margin="6,0,0,0"
-                        VerticalAlignment="Center" ToolTip="切换到中文界面 / Switch to Chinese"/>
-                <Button x:Name="LanguageEnButton" Content="English" Padding="10,3" Margin="4,0,0,0"
-                        VerticalAlignment="Center" ToolTip="Switch to English / 切换到英文界面"/>
                 <Button x:Name="AboutButton" Content="关于" Padding="10,3" Margin="8,0,0,0"
                         VerticalAlignment="Center" ToolTip="关于 DriveMark / 基于开源 fio 开发"/>
             </WrapPanel>
@@ -153,6 +147,10 @@
                                     </Border>
 
                                     <!-- 操作按钮 -->
+                                    <CheckBox x:Name="SmoothFioLogCheck"
+                                              Content="启用 fio 日志平滑（最小 100ms 窗口，默认关闭）"
+                                              Margin="0,0,0,6" VerticalAlignment="Center"
+                                              ToolTip="默认关闭：带宽/IOPS 日志按所选采样间隔原样记录（大块 + 高队列时可能出现瞬时假点）。开启：fio 对带宽/IOPS 日志使用最小 100ms 窗口（延迟日志不受影响），可抑制假点。"/>
                                     <WrapPanel Margin="0,0,0,6">
                                         <Button x:Name="SaveJobButton" Content="保存 .fio" Padding="8,2" Margin="0,0,6,4"/>
                                         <Button x:Name="CopyJobButton" Content="复制 job" Padding="8,2" Margin="0,0,6,4"/>
@@ -310,6 +308,16 @@
         <!-- ============ 底部状态栏 ============ -->
         <Border Grid.Row="3" Background="White" BorderBrush="#E2E5EA" BorderThickness="0,1,0,0" Padding="14,5">
             <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center"
+                            Margin="0,0,12,0">
+                    <TextBlock Text="语言" FontSize="11" Foreground="#9CA3AF" VerticalAlignment="Center"/>
+                    <Button x:Name="LanguageZhButton" Content="中文" Padding="7,1" Margin="4,0,0,0"
+                            FontSize="11" Height="21" VerticalAlignment="Center"
+                            ToolTip="切换到中文界面 / Switch to Chinese"/>
+                    <Button x:Name="LanguageEnButton" Content="English" Padding="7,1" Margin="4,0,0,0"
+                            FontSize="11" Height="21" VerticalAlignment="Center"
+                            ToolTip="Switch to English / 切换到英文界面"/>
+                </StackPanel>
                 <TextBlock x:Name="FioNoticeText" DockPanel.Dock="Right" FontSize="11" Foreground="#9CA3AF"
                            Margin="12,0,0,0" Text="基于开源 fio（Flexible I/O Tester）开发"
                            ToolTip="DriveMark 是基于 fio 的图形界面；fio 源码与 GPL-2.0 许可证见软件目录 FIO\"/>

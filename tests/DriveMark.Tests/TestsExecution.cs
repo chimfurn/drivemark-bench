@@ -331,5 +331,25 @@ internal static class TestsExecution
             Assert.Equal("50", config.Get("bwavgtime"), "bwavgtime");
             Assert.Equal("50", config.Get("iopsavgtime"), "iopsavgtime");
         }));
+
+        tests.Add(("fio 日志平滑：默认关闭，开启时设置环境变量", () =>
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo();
+            FioRunner.ApplyFioLogSmoothing(psi, new FioRunRequest
+            {
+                Config = SimpleTestProfiles.CreateDefaultConfig(),
+                EnableFioLogSmoothing = false,
+            });
+            Assert.False(psi.Environment.ContainsKey("DRIVEMARK_FIO_MIN_LOG_MS"),
+                "默认关闭时不应设置环境变量");
+
+            FioRunner.ApplyFioLogSmoothing(psi, new FioRunRequest
+            {
+                Config = SimpleTestProfiles.CreateDefaultConfig(),
+                EnableFioLogSmoothing = true,
+            });
+            Assert.Equal("100", psi.Environment["DRIVEMARK_FIO_MIN_LOG_MS"],
+                "开启时应设置 100ms 最小窗口");
+        }));
     }
 }

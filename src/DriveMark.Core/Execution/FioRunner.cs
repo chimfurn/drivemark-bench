@@ -219,6 +219,7 @@ public sealed class FioRunner
             };
             foreach (var arg in args)
                 psi.ArgumentList.Add(arg);
+            ApplyFioLogSmoothing(psi, request);
 
             var timeout = request.HardTimeout ?? ComputeTimeout(config);
             using var process = new Process { StartInfo = psi };
@@ -593,6 +594,7 @@ public sealed class FioRunner
         };
         foreach (var arg in args)
             psi.ArgumentList.Add(arg);
+        ApplyFioLogSmoothing(psi, request);
 
         var timeout = request.HardTimeout ?? ComputeTimeout(config);
 
@@ -915,6 +917,17 @@ public sealed class FioRunner
         }
     }
 
+    /// <summary>
+    /// 把界面上的“fio 日志平滑”开关传给 fio：开启时设置 DRIVEMARK_FIO_MIN_LOG_MS=100，
+    /// 关闭时不设置该环境变量，让 fio 保持上游原始行为。
+    /// </summary>
+    internal static void ApplyFioLogSmoothing(ProcessStartInfo psi, FioRunRequest request)
+    {
+        if (request.EnableFioLogSmoothing)
+            psi.Environment["DRIVEMARK_FIO_MIN_LOG_MS"] = "100";
+        else
+            psi.Environment.Remove("DRIVEMARK_FIO_MIN_LOG_MS");
+    }
     private static string Quote(string value) =>
         value.Contains(' ') || value.Contains('\t') ? $"\"{value}\"" : value;
 }

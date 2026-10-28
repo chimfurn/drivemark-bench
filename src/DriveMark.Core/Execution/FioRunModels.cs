@@ -19,6 +19,9 @@ public sealed class FioRunRequest
     /// <summary>是否允许写操作。配置里 rw 含写时必须置 true，否则拒绝运行。</summary>
     public bool AllowWrites { get; init; }
 
+    /// <summary>是否启用 fio 日志平滑（最小 100ms 窗口；默认关闭）。</summary>
+    public bool EnableFioLogSmoothing { get; init; }
+
     /// <summary>
     /// 是否允许在系统盘上做写测试。默认 false（系统盘禁止写入测试），
     /// 普通用户界面不暴露此开关。
