@@ -181,7 +181,7 @@ public partial class MainWindow : Window
     {
         var english = UiLanguage.IsEnglish;
         var text = english
-            ? "DriveMark 1.2.0 — disk benchmark GUI\n\n" +
+            ? "DriveMark 1.2.1 — disk benchmark GUI\n\n" +
               "DriveMark is a graphical front-end for the open-source fio (Flexible I/O Tester).\n\n" +
               "• fio version: fio-3.43 (bundled, with optional DriveMark patches)\n" +
               "• fio author: Jens Axboe and contributors\n" +
@@ -191,7 +191,7 @@ public partial class MainWindow : Window
               "• optional 100 ms log-smoothing patch: disabled by default\n\n" +
               "DriveMark only provides the UI, parameter validation, result plotting and automation; " +
               "the actual I/O tests are performed by fio."
-            : "DriveMark 1.2.0 — 硬盘测速 GUI\n\n" +
+            : "DriveMark 1.2.1 — 硬盘测速 GUI\n\n" +
               "本软件是基于开源 fio（Flexible I/O Tester）开发的图形界面。\n\n" +
               "• fio 版本：fio-3.43（内置，含可选 DriveMark 补丁）\n" +
               "• fio 作者：Jens Axboe 及贡献者\n" +

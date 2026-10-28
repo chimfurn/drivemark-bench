@@ -1,9 +1,11 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using DriveMark.Core;
 
@@ -214,6 +216,46 @@ public static class UiLanguage
         Walk(window);
     }
 
+    /// <summary>
+    /// 不直接改 ComboBox 模板生成的 TextBlock，而是给它设置带翻译转换器的 ItemTemplate。
+    /// 这样选中项变化时绑定会重新求值，选中框不会停留在旧文字。
+    /// </summary>
+
+    private static void LocalizeComboBox(ComboBox combo)
+    {
+        // 带 DisplayMemberPath 的对象型下拉（测试项目 / 数据源 / 坐标轴 / 目标盘等）
+        // 保持 WPF 默认模板：选中项变化会正常刷新显示。
+        // 之前直接改模板里 TextBlock.Text 造成的“选中不变”就是在这里修掉的。
+        if (!string.IsNullOrEmpty(combo.DisplayMemberPath))
+            return;
+
+        // 字符串型下拉：只替换 ItemTemplate，用翻译转换器显示；
+        // 不碰模板元素，选中项变化时绑定会重新求值。
+        var binding = new Binding(".") { Converter = TranslatedTextConverter.Instance };
+        var factory = new FrameworkElementFactory(typeof(TextBlock));
+        factory.SetBinding(TextBlock.TextProperty, binding);
+        factory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        factory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        combo.ItemTemplate = new DataTemplate { VisualTree = factory };
+
+        // 可编辑下拉的显示文字在 TextBox 里，直接翻译不会碰模板元素。
+        if (combo.IsEditable && !combo.IsKeyboardFocusWithin && !string.IsNullOrWhiteSpace(combo.Text))
+        {
+            var translated = Translate(combo.Text);
+            if (!string.Equals(translated, combo.Text, StringComparison.Ordinal))
+                combo.Text = translated;
+        }
+    }
+    private sealed class TranslatedTextConverter : IValueConverter
+    {
+        public static readonly TranslatedTextConverter Instance = new();
+
+        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            => Translate(value?.ToString() ?? string.Empty);
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
     /// <summary>把单条中文/英文文案转换为当前语言（用于运行时状态文本）。</summary>
     public static string Translate(string text)
     {
@@ -226,6 +268,18 @@ public static class UiLanguage
 
     private static void Walk(DependencyObject node)
     {
+        // ComboBox 的选中项显示由模板生成的 TextBlock/ContentPresenter 承载。
+        // 如果直接改写这些子元素的 Text/Content，会留下本地值，之后切换 SelectedItem
+        // 时选中框仍显示旧文本（用户看到的“参数变了但下拉框显示不变”）。
+        // 因此 ComboBox 只翻译 ToolTip，不进入其视觉子树。
+        if (node is ComboBox comboBox)
+        {
+            if (comboBox.ToolTip is string comboTooltip)
+                comboBox.ToolTip = Translate(comboTooltip);
+            LocalizeComboBox(comboBox);
+            return;
+        }
+
         int count;
         try
         {
